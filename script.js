@@ -113,7 +113,7 @@ async function autoSaveImages() {
     if (files.length > 0) {
         const maxImageCount = 100;
         if (images.length + files.length > maxImageCount) {
-            console.warn(画像は最大${maxImageCount}枚まで登録できます。);
+            console.warn(`画像は最大${maxImageCount}枚まで登録できます。`);
             input.value = '';
             return;
         }
@@ -269,7 +269,7 @@ timeInput.addEventListener('wheel', function(event) {
         hours = (minutes === 59) ? (hours === 0 ? 23 : hours - 1) : hours;
     }
 
-    timeInput.value = ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')};
+    timeInput.value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 });
 
 // 初期化処理
