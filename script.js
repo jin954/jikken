@@ -2,8 +2,8 @@ let images = JSON.parse(localStorage.getItem("images")) || [];
 let currentIndex = parseInt(localStorage.getItem("currentIndex")) || 0;
 let alarmTime = localStorage.getItem("alarmTime") || '';
 let alarmCheckInterval;
-let imageQueue = []; // 画像登録キュー
-let isProcessingQueue = false; // キュー処理中のフラグ
+let imageQueue = [];
+let isProcessingQueue = false;
 
 const defaultImage = "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='500' height='500'><rect width='500' height='500' fill='white'/></svg>";
 
@@ -15,11 +15,11 @@ function compressImage(imageFile) {
             img.src = event.target.result;
             img.onload = function() {
                 const canvas = document.createElement('canvas');
-                canvas.width = 200; // サムネイルの幅
-                canvas.height = 200; // サムネイルの高さ
+                canvas.width = 200;
+                canvas.height = 200;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                resolve(canvas.toDataURL('image/jpeg', 0.7)); // 圧縮率70%
+                resolve(canvas.toDataURL('image/jpeg', 0.7));
             };
         };
         reader.onerror = reject;
@@ -27,17 +27,13 @@ function compressImage(imageFile) {
     });
 }
 
-function readFileAndRegister(file) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            const compressedImageUrl = await compressImage(file);
-            registerImage(compressedImageUrl);
-            resolve();
-        } catch (error) {
-            console.error("画像の登録中にエラーが発生しました:", error);
-            reject();
-        }
-    });
+async function readFileAndRegister(file) {
+    try {
+        const compressedImageUrl = await compressImage(file);
+        registerImage(compressedImageUrl);
+    } catch (error) {
+        console.error("画像の登録中にエラーが発生しました:", error);
+    }
 }
 
 function loadImage(index) {
@@ -113,7 +109,7 @@ async function autoSaveImages() {
     if (files.length > 0) {
         const maxImageCount = 100;
         if (images.length + files.length > maxImageCount) {
-            console.warn(画像は最大${maxImageCount}枚まで登録できます。);
+            console.warn(`画像は最大${maxImageCount}枚まで登録できます。`);
             input.value = '';
             return;
         }
@@ -155,7 +151,40 @@ async function processImageQueue() {
     isProcessingQueue = false;
 }
 
+function deleteImage(index) {
+    if (index < 0 || index >= images.length) return;
+
+    images.splice(index, 1);
+    localStorage.setItem("images", JSON.stringify(images));
+
+    currentIndex = Math.min(currentIndex, images.length - 1);
+    localStorage.setItem("currentIndex", currentIndex);
+
+    loadImage(currentIndex);
+    debounceUpdateImageList();
+}
+
+function moveImageUp(index) {
+    if (index > 0) {
+        [images[index], images[index - 1]] = [images[index - 1], images[index]];
+        localStorage.setItem("images", JSON.stringify(images));
+        debounceUpdateImageList();
+    }
+}
+
+function moveImageDown(index) {
+    if (index < images.length - 1) {
+        [images[index], images[index + 1]] = [images[index + 1], images[index]];
+        localStorage.setItem("images", JSON.stringify(images));
+        debounceUpdateImageList();
+    }
+}
+
 function registerImage(imageUrl) {
+    if (!imageUrl) {
+        console.warn("無効な画像URLが指定されました。");
+        return;
+    }
     images.push({ url: imageUrl });
     localStorage.setItem("images", JSON.stringify(images));
 }
@@ -213,33 +242,6 @@ function createImageListItem(imageList, image, index) {
 
 const debounceUpdateImageList = debounce(updateImageList, 200);
 
-function deleteImage(index) {
-    if (index < 0 || index >= images.length) return;
-
-    images.splice(index, 1);
-    localStorage.setItem("images", JSON.stringify(images));
-
-    currentIndex = Math.min(currentIndex, images.length - 1);
-    localStorage.setItem("currentIndex", currentIndex);
-
-    loadImage(currentIndex);
-}
-
-function moveImageUp(index) {
-    if (index > 0) {
-        [images[index], images[index - 1]] = [images[index - 1], images[index]];
-        localStorage.setItem("images", JSON.stringify(images));
-    }
-}
-
-function moveImageDown(index) {
-    if (index < images.length - 1) {
-        [images[index], images[index + 1]] = [images[index + 1], images[index]];
-        localStorage.setItem("images", JSON.stringify(images));
-    }
-}
-
-// 時間入力に対するホイール操作を制御
 const timeInput = document.getElementById("alarmTime");
 timeInput.addEventListener('wheel', function(event) {
     event.preventDefault();
@@ -254,10 +256,9 @@ timeInput.addEventListener('wheel', function(event) {
         hours = (minutes === 59) ? (hours === 0 ? 23 : hours - 1) : hours;
     }
 
-    timeInput.value = ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')};
+    timeInput.value = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 });
 
-// 初期化処理
 window.onload = function () {
     loadImage(currentIndex);
     updateImageList();
